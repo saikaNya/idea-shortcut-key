@@ -16,6 +16,10 @@
       {
         "command": "idea-shortcut-key.fqn",
         "title": "get FQN"
+      },
+      {
+        "command": "idea-shortcut-key.copyFileFQN",
+        "title": "Copy File FQN"
       }
     ],
     "keybindings": [
@@ -24,8 +28,29 @@
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "idea-shortcut-key.copyFileFQN",
+        "key": "ctrl+alt+shift+c",
+        "mac": "cmd+alt+shift+c",
+        "when": "explorerViewletVisible && filesExplorerFocus"
+      },
+      {
+        "command": "idea-shortcut-key.copyFileFQN",
+        "key": "ctrl+alt+shift+c",
+        "mac": "cmd+alt+shift+c",
+        "when": "listFocus && explorerViewletVisible"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "idea-shortcut-key.copyFileFQN",
+          "when": "resourceExtname == .java",
+          "group": "5_cutcopypaste"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

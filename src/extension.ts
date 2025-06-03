@@ -15,8 +15,9 @@ export function activate(context: vscode.ExtensionContext) {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 	const disposable = vscode.commands.registerTextEditorCommand('idea-shortcut-key.fqn', copyFQN);
+	const fileDisposable = vscode.commands.registerCommand('idea-shortcut-key.copyFileFQN', copyFileFQN);
 
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(disposable, fileDisposable);
 }
 
 // This method is called when your extension is deactivated
@@ -110,4 +111,109 @@ function enhanceFQN(editor: vscode.TextEditor, part: string): string {
         // Bummer - does not work for fields
     }
     return part;
+}
+
+// 复制文件的全限定名
+async function copyFileFQN(uri?: vscode.Uri) {
+    let targetUri: vscode.Uri | undefined = uri;
+    
+    // 如果没有传入URI，尝试从不同的上下文获取
+    if (!targetUri) {
+        // 首先尝试从命令参数获取（当从资源管理器右键菜单调用时）
+        const args = arguments;
+        if (args && args.length > 0 && args[0] && args[0].fsPath) {
+            targetUri = args[0];
+        }
+        // 如果还是没有，尝试从当前活动编辑器获取
+        else if (vscode.window.activeTextEditor) {
+            targetUri = vscode.window.activeTextEditor.document.uri;
+        }
+    }
+    
+    if (!targetUri) {
+        vscode.window.showWarningMessage('No file selected! Please select a file in the explorer or open a file in the editor.');
+        return;
+    }
+    
+    const fqn = await getFileFQN(targetUri);
+    if (fqn) {
+        await vscode.env.clipboard.writeText(fqn);
+    } else {
+        vscode.window.showWarningMessage('Could not determine file FQN!');
+    }
+}
+
+// 获取文件的全限定名
+async function getFileFQN(uri: vscode.Uri): Promise<string | null> {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    if (!workspaceFolder) {
+        return null;
+    }
+    
+    const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const fileExtension = uri.path.split('.').pop()?.toLowerCase();
+    
+    // 处理Java文件
+    if (fileExtension === 'java') {
+        return getJavaFileFQN(uri, workspaceFolder, relativePath);
+    }
+    
+    // 处理其他类型的文件，返回相对路径
+    return relativePath.replace(/\\/g, '.');
+}
+
+// 获取Java文件的全限定类名
+async function getJavaFileFQN(uri: vscode.Uri, workspaceFolder: vscode.WorkspaceFolder, relativePath: string): Promise<string | null> {
+    try {
+        // 读取文件内容来获取包名
+        const document = await vscode.workspace.openTextDocument(uri);
+        const content = document.getText();
+        
+        // 提取包名
+        const packageMatch = /^\s*package\s+([a-zA-Z_$][a-zA-Z0-9_$.]*)\s*;/m.exec(content);
+        const packageName = packageMatch ? packageMatch[1] : '';
+        
+        // 获取类名（文件名去掉扩展名）
+        const fileName = uri.path.split('/').pop();
+        const className = fileName ? fileName.replace(/\.java$/, '') : '';
+        
+        if (!className) {
+            return null;
+        }
+        
+        // 组合完全限定类名
+        return packageName ? `${packageName}.${className}` : className;
+        
+    } catch (error) {
+        console.error('Error reading Java file:', error);
+        
+        // 如果无法读取文件内容，尝试从路径推断
+        return inferJavaFQNFromPath(relativePath);
+    }
+}
+
+// 从文件路径推断Java类的全限定名
+function inferJavaFQNFromPath(relativePath: string): string | null {
+    // 移除文件扩展名
+    let pathWithoutExtension = relativePath.replace(/\.java$/, '');
+    
+    // 将路径分隔符替换为点
+    pathWithoutExtension = pathWithoutExtension.replace(/[/\\]/g, '.');
+    
+    // 尝试找到src目录并移除之前的部分
+    const srcIndex = pathWithoutExtension.indexOf('src.');
+    if (srcIndex !== -1) {
+        pathWithoutExtension = pathWithoutExtension.substring(srcIndex + 4); // 移除 "src."
+    }
+    
+    // 移除常见的源码目录前缀
+    const commonPrefixes = ['main.java.', 'test.java.', 'java.'];
+    for (const prefix of commonPrefixes) {
+        if (pathWithoutExtension.startsWith(prefix)) {
+            pathWithoutExtension = pathWithoutExtension.substring(prefix.length);
+            break;
+        }
+    }
+    
+    return pathWithoutExtension || null;
 }

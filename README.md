@@ -1,71 +1,71 @@
-# idea-shortcut-key README
+# IDEA Shortcut Key Extension
 
-This is the README for your extension "idea-shortcut-key". After writing up a brief description, we recommend including the following sections.
+这是一个VS Code扩展，提供类似IntelliJ IDEA的快捷键功能，用于复制Java代码的全限定名(FQN)。
 
-## Features
+## 功能特性
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### 1. 复制代码符号的全限定名
+- 在Java代码中的类名、方法名或字段上使用快捷键
+- 自动提取并复制完全限定名到剪贴板
+- 支持方法签名（自动移除返回类型和throws子句）
 
-For example if there is an image subfolder under your extension project workspace:
+### 2. 复制文件的全限定名
+- 在文件资源管理器中选中Java文件时使用快捷键
+- 自动读取package声明并生成完全限定类名
+- 支持从文件路径推断包名（当无法读取文件内容时）
 
-\!\[feature X\]\(images/feature-x.png\)
+## 使用方法
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### 快捷键
+- **Windows/Linux**: `Ctrl+Alt+Shift+C`
+- **Mac**: `Cmd+Alt+Shift+C`
 
-## Requirements
+### 使用场景
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+#### 1. 在代码编辑器中
+将光标放在Java类名、方法名或字段上，按下快捷键即可复制其全限定名。
 
-## Extension Settings
+**示例**:
+```java
+public class LinkConvertController {
+    public Object search() throws IOException {
+        // 光标在 search 方法名上按快捷键
+        // 复制结果: com.hy.linkConvert.api.LinkConvertController.search()
+    }
+}
+```
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+#### 2. 在文件资源管理器中
+- 在文件资源管理器中选中Java文件
+- 按下快捷键复制文件的全限定类名
+- 或者右键点击Java文件，选择"Copy File FQN"
 
-For example:
+**示例**:
+```
+文件路径: src/main/java/com/hy/linkConvert/api/LinkConvertController.java
+复制结果: com.hy.linkConvert.api.LinkConvertController
+```
 
-This extension contributes the following settings:
+## 支持的文件结构
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+扩展能够正确处理以下项目结构：
 
-## Known Issues
+- 标准Maven项目: `src/main/java/com/example/MyClass.java`
+- 标准Gradle项目: `src/main/java/com/example/MyClass.java`
+- 简单src结构: `src/com/example/MyClass.java`
+- 自定义结构: 通过读取package声明自动识别
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## 安装和开发
 
-## Release Notes
+1. 克隆项目
+2. 运行 `pnpm install` 安装依赖
+3. 运行 `pnpm run compile` 编译项目
+4. 按 F5 在新的VS Code窗口中测试扩展
 
-Users appreciate release notes as you update your extension.
+## 技术特性
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- 智能解析Java方法签名
+- 自动移除返回类型和throws子句
+- 支持复杂的包名结构
+- 优雅的错误处理和用户反馈
+- 支持Windows和Unix路径分隔符
