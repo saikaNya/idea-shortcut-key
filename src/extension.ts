@@ -1,14 +1,8 @@
 'use strict';
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import express, { Request, Response } from 'express';
-import * as http from 'http';
 import * as vscode from 'vscode';
 import { debug, error, info, initLogger, warn } from './logger';
-
-// HTTP 服务器实例
-let httpServer: http.Server | null = null;
-const HTTP_PORT = 3947; // 调试服务器端口
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -29,95 +23,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     debug('Registered commands: copyReference, copyFileReference');
 
-    // 启动 HTTP 调试服务器
-    startDebugServer();
-
     context.subscriptions.push(disposable, fileDisposable);
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {
-    stopDebugServer();
-}
-
-/**
- * 启动 HTTP 调试服务器
- */
-function startDebugServer() {
-    if (httpServer) {
-        return; // 服务器已经启动
-    }
-
-    const app = express();
-    app.use(express.json());
-
-    // API: 获取 copyReference 结果
-    // POST /api/copyReference
-    // Body: { "vscodeUriPath": "/d:/project/src/Main.java", "line": 10, "character": 5 }
-    // vscodeUriPath 对应 vscode.Uri.path，普通文件为文件路径，class 文件为 jdt://... 格式
-    app.post('/api/copyReference', async (req: Request, res: Response) => {
-        debug(`API /api/copyReference called with body: ${JSON.stringify(req.body)}`);
-        try {
-            const { vscodeUriPath, line, character } = req.body;
-
-            if (!vscodeUriPath) {
-                warn('API /api/copyReference: vscodeUriPath is required');
-                res.status(400).json({ error: 'vscodeUriPath is required' });
-                return;
-            }
-
-            const lineNum = typeof line === 'number' ? line : 0;
-            const charNum = typeof character === 'number' ? character : 0;
-
-            const result = await getReference(vscodeUriPath, lineNum, charNum);
-            debug(`API /api/copyReference result: ${JSON.stringify(result)}`);
-
-            res.json({
-                success: true,
-                reference: result.reference,
-                type: result.type
-            });
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            error(`API /api/copyReference error: ${errorMessage}`);
-            res.status(500).json({
-                success: false,
-                error: errorMessage
-            });
-        }
-    });
-
-    // 健康检查接口
-    app.get('/health', (_req: Request, res: Response) => {
-        debug('API /health called');
-        res.json({ status: 'ok', port: HTTP_PORT });
-    });
-
-    httpServer = app.listen(HTTP_PORT, '127.0.0.1', () => {
-        info(`Debug server started on http://127.0.0.1:${HTTP_PORT}`);
-        vscode.window.showInformationMessage(`Debug server started on port ${HTTP_PORT}`);
-    });
-
-    httpServer.on('error', (err: NodeJS.ErrnoException) => {
-        if (err.code === 'EADDRINUSE') {
-            error(`Port ${HTTP_PORT} is already in use`);
-            vscode.window.showWarningMessage(`Debug server port ${HTTP_PORT} is already in use`);
-        } else {
-            error(`Debug server error: ${err.message}`);
-        }
-        httpServer = null;
-    });
-}
-
-/**
- * 停止 HTTP 调试服务器
- */
-function stopDebugServer() {
-    if (httpServer) {
-        httpServer.close();
-        httpServer = null;
-        info('Debug server stopped');
-    }
 }
 
 /**
@@ -225,8 +135,6 @@ async function getReferenceAtLocation(uri: vscode.Uri, position: vscode.Position
 
     // 打开文档获取包名
     const document = await vscode.workspace.openTextDocument(uri);
-    const packageName = getPackageName(document);
-    debug(`Package name: ${packageName || '(default package)'}`);
 
     // 使用 DocumentSymbol 获取文档符号
     debug('Executing document symbol provider...');
@@ -260,7 +168,7 @@ async function getReferenceAtLocation(uri: vscode.Uri, position: vscode.Position
     }
 
     // 构建 IDEA 风格的引用
-    const reference = await buildIdeaReference(packageName, symbolChain, document);
+    const reference = await buildIdeaReference(symbolChain, document);
     debug(`Built IDEA reference: ${reference}`);
     return reference;
 }
@@ -282,6 +190,7 @@ function getSourceRelativePathWithLine(uri: vscode.Uri, position: vscode.Positio
 function getSourceRelativePath(uri: vscode.Uri): string {
     // 获取文件的完整路径
     const fullPath = uri.fsPath.replace(/\\/g, '/');
+    debug(`getSourceRelativePath fullPath: ${fullPath}`);
 
     // 尝试匹配常见的 Java 源码目录模式
     const sourcePatterns = [
@@ -306,15 +215,6 @@ function getSourceRelativePath(uri: vscode.Uri): string {
 }
 
 /**
- * 获取文档的包名
- */
-function getPackageName(document: vscode.TextDocument): string {
-    const content = document.getText();
-    const packageMatch = /^\s*package\s+([a-zA-Z_$][a-zA-Z0-9_$.]*)\s*;/m.exec(content);
-    return packageMatch ? packageMatch[1] : '';
-}
-
-/**
  * 递归查找包含指定位置的符号链
  * 返回从外层到内层的符号数组
  */
@@ -324,8 +224,14 @@ function findSymbolChainAtPosition(
 ): vscode.DocumentSymbol[] {
     for (const symbol of symbols) {
         if (symbol.range.contains(position)) {
+            // 打印符号的 range 与 selectionRange
+            debug(`Symbol: ${symbol.name}, kind: ${vscode.SymbolKind[symbol.kind]}, range: [${symbol.range.start.line}:${symbol.range.start.character} - ${symbol.range.end.line}:${symbol.range.end.character}], selectionRange: [${symbol.selectionRange.start.line}:${symbol.selectionRange.start.character} - ${symbol.selectionRange.end.line}:${symbol.selectionRange.end.character}]`);
             // 检查是否光标精确在符号名称上
             const isOnSymbolName = symbol.selectionRange.contains(position);
+
+            if (isOnSymbolName) {
+                return [symbol];
+            }
 
             // 递归查找子符号
             if (symbol.children && symbol.children.length > 0) {
@@ -333,11 +239,6 @@ function findSymbolChainAtPosition(
                 if (childChain.length > 0) {
                     return [symbol, ...childChain];
                 }
-            }
-
-            // 如果光标在符号名称上，或者没有更精确的子符号
-            if (isOnSymbolName || !symbol.children || symbol.children.length === 0) {
-                return [symbol];
             }
 
             // 光标在符号范围内但不在任何子符号上
@@ -355,8 +256,8 @@ function findSymbolChainAtPosition(
  * - 方法: com.example.MyClass#methodName(java.lang.String, int) (有重载时，参数为全限定名)
  * - 字段: com.example.MyClass#fieldName
  */
-async function buildIdeaReference(packageName: string, symbolChain: vscode.DocumentSymbol[], document: vscode.TextDocument): Promise<string | null> {
-    debug(`buildIdeaReference: packageName=${packageName}, symbolChain=${symbolChain.map(s => s.name).join(' -> ')}`);
+async function buildIdeaReference(symbolChain: vscode.DocumentSymbol[], document: vscode.TextDocument): Promise<string | null> {
+    debug(`buildIdeaReference:  symbolChain=${symbolChain.map(s => s.name).join(' -> ')}`);
 
     if (symbolChain.length === 0) {
         debug('Empty symbol chain');
@@ -367,10 +268,32 @@ async function buildIdeaReference(packageName: string, symbolChain: vscode.Docum
     const lastSymbolKind = lastSymbol.kind;
     debug(`Last symbol: ${lastSymbol.name}, kind=${vscode.SymbolKind[lastSymbolKind]}`);
 
-    // 构建类的完全限定名（包括内部类）
-    const classSymbols = symbolChain.filter(s => isTypeSymbol(s.kind));
-    const className = classSymbols.map(s => s.name).join('.');
-    const fullyQualifiedClassName = packageName ? `${packageName}.${className}` : className;
+    // 通过解析 uri.toString() 获取外部类名
+    let fullyQualifiedClassName;
+    const uri = document.uri;
+    if (uri.scheme === 'jdt') {
+        fullyQualifiedClassName = parseClassFQNFromJdtUri(uri);
+    } else {
+        let fileFqnName = getFqnByFilePath(uri);
+        // 从 symbolChain 构建完整的类名（包括内部类）
+        fullyQualifiedClassName = fileFqnName;
+        if (fullyQualifiedClassName) {
+            // 从索引 1 开始遍历，构建内部类路径
+            for (let i = 1; i < symbolChain.length; i++) {
+                const symbol = symbolChain[i];
+                if (isTypeSymbol(symbol.kind)) {
+                    fullyQualifiedClassName += '.' + symbol.name;
+                }
+            }
+        }
+    }
+
+    debug(`Class name from URI: ${fullyQualifiedClassName}`);
+
+    if (!fullyQualifiedClassName) {
+        debug('Could not parse class name from URI');
+        return null;
+    }
     debug(`Fully qualified class name: ${fullyQualifiedClassName}`);
 
     // 根据最后一个符号的类型决定输出格式
@@ -379,22 +302,31 @@ async function buildIdeaReference(packageName: string, symbolChain: vscode.Docum
         debug('Symbol is a type, returning class name');
         return fullyQualifiedClassName;
     } else if (isMemberSymbol(lastSymbolKind)) {
-        // 找到成员所属的类
-        const ownerClassSymbols = symbolChain.slice(0, -1).filter(s => isTypeSymbol(s.kind));
-        const ownerClassName = ownerClassSymbols.map(s => s.name).join('.');
-        const fullyQualifiedOwnerClassName = packageName ? `${packageName}.${ownerClassName}` : ownerClassName;
-        debug(`Owner class: ${fullyQualifiedOwnerClassName}`);
-
         // 获取成员名，对于方法需要检查是否存在重载
         const memberName = await getMemberReference(lastSymbol, symbolChain, document);
         debug(`Member reference: ${memberName}`);
 
-        return `${fullyQualifiedOwnerClassName}#${memberName}`;
+        return `${fullyQualifiedClassName}#${memberName}`;
     }
 
     // 其他类型，返回完全限定类名
     debug('Unknown symbol type, returning class name');
     return fullyQualifiedClassName;
+}
+
+/**
+ * 通过文件路径获取全限定类名
+ * 将相对路径转换为包名格式：com/example/MyClass.java -> com.example.MyClass
+ */
+function getFqnByFilePath(uri: vscode.Uri): string | null {
+    const relativePath = getSourceRelativePath(uri);
+    debug(`getFqnByFilePath relativePath: ${relativePath}`);
+    if (!relativePath) {
+        return null;
+    }
+    return relativePath
+        .replace(/\//g, '.')
+        .replace(/\.(java|class)$/, '');
 }
 
 /**
@@ -439,7 +371,7 @@ async function resolveParamsWithTypeDefinition(
     document: vscode.TextDocument
 ): Promise<string> {
     debug(`resolveParamsWithTypeDefinition: method=${methodSymbol.name}`);
-    
+
     // 获取方法声明的源代码范围
     const methodRange = methodSymbol.range;
     const methodText = document.getText(methodRange);
@@ -489,7 +421,7 @@ async function resolveParamsWithTypeDefinition(
     for (let i = 0; i < params.length; i++) {
         const param = params[i];
         debug(`Processing param[${i}]: "${param}", currentOffset=${currentOffset}`);
-        
+
         // 跳过空白
         while (currentOffset < parenEnd && /\s/.test(methodText[currentOffset])) {
             currentOffset++;
@@ -499,7 +431,7 @@ async function resolveParamsWithTypeDefinition(
         // 解析参数：可能有注解、类型、变量名
         const paramInfo = parseMethodParam(param);
         debug(`Parsed param info: typeName="${paramInfo.typeName}", isVarArgs=${paramInfo.isVarArgs}, arrayDimension="${paramInfo.arrayDimension}"`);
-        
+
         if (!paramInfo.typeName) {
             debug(`No type name found, using raw param`);
             resolvedTypes.push(param.trim());
@@ -549,12 +481,12 @@ async function checkIsGenericTypeParameter(uri: vscode.Uri, position: vscode.Pos
     try {
         const doc = await vscode.workspace.openTextDocument(uri);
         const line = doc.lineAt(position.line).text;
-        
+
         // 检查目标位置处的标识符是否匹配 expectedName
         // 从 position.character 开始向左右扩展找到完整的标识符
         let start = position.character;
         let end = position.character;
-        
+
         // 向左找标识符起始位置
         while (start > 0 && /[a-zA-Z0-9_$]/.test(line[start - 1])) {
             start--;
@@ -563,14 +495,14 @@ async function checkIsGenericTypeParameter(uri: vscode.Uri, position: vscode.Pos
         while (end < line.length && /[a-zA-Z0-9_$]/.test(line[end])) {
             end++;
         }
-        
+
         const identifierAtPos = line.substring(start, end);
         debug(`checkIsGenericTypeParameter: position=${position.line}:${position.character}, identifierAtPos="${identifierAtPos}", expectedName="${expectedName}"`);
-        
+
         if (identifierAtPos !== expectedName) {
             return false;
         }
-        
+
         // 检查这个标识符是否在泛型声明 < > 中
         // 向左查找是否有 < 且没有被 > 关闭
         let depth = 0;
@@ -587,7 +519,7 @@ async function checkIsGenericTypeParameter(uri: vscode.Uri, position: vscode.Pos
                 depth--;
             }
         }
-        
+
         debug(`checkIsGenericTypeParameter: not inside generic declaration`);
         return false;
     } catch (e) {
@@ -601,7 +533,7 @@ async function checkIsGenericTypeParameter(uri: vscode.Uri, position: vscode.Pos
  */
 async function getTypeDefinitionFQN(uri: vscode.Uri, position: vscode.Position, fallbackName: string): Promise<string> {
     debug(`getTypeDefinitionFQN: uri=${uri.toString()}, position=${position.line}:${position.character}, fallbackName="${fallbackName}"`);
-    
+
     try {
         debug(`Executing vscode.executeTypeDefinitionProvider...`);
         const typeDefinitions = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -669,7 +601,7 @@ async function getTypeDefinitionFQN(uri: vscode.Uri, position: vscode.Position, 
  */
 async function getClassFQNFromUri(uri: vscode.Uri): Promise<string | null> {
     debug(`getClassFQNFromUri: uri=${uri.toString()}`);
-    
+
     // 对于 JDT URI，优先从路径中解析类名（更可靠）
     // 格式: jdt://contents/rt.jar/java.lang/Class.class?...
     if (uri.scheme === 'jdt') {
@@ -679,7 +611,7 @@ async function getClassFQNFromUri(uri: vscode.Uri): Promise<string | null> {
             return fqnFromPath;
         }
     }
-    
+
     try {
         const doc = await vscode.workspace.openTextDocument(uri);
         const content = doc.getText();
@@ -723,26 +655,26 @@ function parseClassFQNFromJdtUri(uri: vscode.Uri): string | null {
     try {
         const path = uri.path;
         debug(`Parsing JDT URI path: ${path}`);
-        
+
         // 路径格式: /contents/rt.jar/java.lang/Class.class 或类似格式
         // 也可能是: /contents/spring-web-5.3.25.jar/org.springframework.web.client/RestTemplate.class
         // 内部类: /contents/xxx.jar/package.name/OuterClass$InnerClass.class
         const parts = path.split('/').filter(p => p.length > 0);
         debug(`Path parts: ${JSON.stringify(parts)}`);
-        
-        // 期望格式: ["contents", "jarName", "package.name", "ClassName.class"]
-        if (parts.length >= 4 && parts[0] === 'contents') {
+
+        // 期望格式: ["jarName", "package.name", "ClassName.class"]
+        if (parts.length >= 3) {
             const packageName = parts[parts.length - 2]; // 倒数第二个是包名
             const classFileName = parts[parts.length - 1]; // 最后一个是类文件名
-            
+
             // 移除 .class 后缀获取类名
             let className = classFileName.replace(/\.class$/, '');
-            
+
             // 处理内部类：将 $ 替换为 . 
             // OuterClass$InnerClass -> OuterClass.InnerClass
             // OuterClass$Inner1$Inner2 -> OuterClass.Inner1.Inner2
             className = className.replace(/\$/g, '.');
-            
+
             if (packageName && className) {
                 const fqn = `${packageName}.${className}`;
                 debug(`Parsed FQN from path: packageName=${packageName}, className=${className}, fqn=${fqn}`);

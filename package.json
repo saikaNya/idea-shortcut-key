@@ -2,7 +2,7 @@
   "name": "idea-shortcut-key",
   "displayName": "idea-shortcut-key",
   "description": "idea shortcut key",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "saika",
   "repository": {
     "type": "git",
@@ -14,7 +14,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
@@ -83,7 +85,6 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "1.95.0",
@@ -92,12 +93,10 @@
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.4.2",
+    "cross-env": "^10.1.0",
     "esbuild": "^0.25.3",
     "eslint": "^9.25.1",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.8.3"
-  },
-  "dependencies": {
-    "express": "^5.2.1"
   }
 }

@@ -1,14 +1,33 @@
-.vscode/**
-.vscode-test/**
-out/**
-node_modules/**
-src/**
+# 开发相关
+.cursor/
+.history/
+.idea/
+.vscode/
+.vscode-test/
+node_modules/
+src/
+out/
+
+# 配置文件
+*.ts
+*.map
 .gitignore
-.yarnrc
+.npmrc
+tsconfig.json
+eslint.config.mjs
 esbuild.js
+.vscode-test.mjs
 vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
-**/*.map
-**/*.ts
-**/.vscode-test.*
+
+# 文档
+doc/
+
+# 锁文件
+pnpm-lock.yaml
+package-lock.json
+
+# Source map
+**/*.js.map
+
+# 打包文件
+*.vsix
