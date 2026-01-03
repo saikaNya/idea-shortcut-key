@@ -7,7 +7,7 @@
 ### 1. 复制代码符号的全限定名
 - 在Java代码中的类名、方法名或字段上使用快捷键
 - 自动提取并复制完全限定名到剪贴板
-- 支持方法签名（自动移除返回类型和throws子句）
+- 支持方法签名冲重载
 
 ### 2. 复制文件的全限定名
 - 在文件资源管理器中选中Java文件时使用快捷键
@@ -30,7 +30,7 @@
 public class LinkConvertController {
     public Object search() throws IOException {
         // 光标在 search 方法名上按快捷键
-        // 复制结果: com.hy.linkConvert.api.LinkConvertController.search()
+        // 复制结果: packageName.LinkConvertController.search
     }
 }
 ```
@@ -42,60 +42,6 @@ public class LinkConvertController {
 
 **示例**:
 ```
-文件路径: src/main/java/com/hy/linkConvert/api/LinkConvertController.java
-复制结果: com.hy.linkConvert.api.LinkConvertController
-```
-
-## 支持的文件结构
-
-扩展能够正确处理以下项目结构：
-
-- 标准Maven项目: `src/main/java/com/example/MyClass.java`
-- 标准Gradle项目: `src/main/java/com/example/MyClass.java`
-- 简单src结构: `src/com/example/MyClass.java`
-- 自定义结构: 通过读取package声明自动识别
-
-## 安装和开发
-
-1. 克隆项目
-2. 运行 `pnpm install` 安装依赖
-3. 运行 `pnpm run compile` 编译项目
-4. 按 F5 在新的VS Code窗口中测试扩展
-
-## 技术特性
-
-- 智能解析Java方法签名
-- 自动移除返回类型和throws子句
-- 支持复杂的包名结构
-- 优雅的错误处理和用户反馈
-- 支持Windows和Unix路径分隔符
-
-
-
-```
-我来修改 `copyFQN` 函数，将相对路径:行号作为默认逻辑，只有 `.java` 和 `.class` 文件才使用符号解析逻辑：
-
-[4 tools called]
-
-编译成功！修改完成。
-
-## 修改后的逻辑
-
-### 默认行为（非 Java/Class 文件）
-直接返回 **相对路径:行号** 格式：
-```
-com/demo/testsen/config/ElasticSearchConfig.java:142
-src/components/Button.tsx:25
-```
-
-### Java/Class 文件特殊处理
-只有 `.java` 和 `.class` 文件解析：
-
-| 光标位置 | 输出 |
-|---------|------|
-| 类名上 | `com.demo.testsen.config.ElasticSearchConfig` |
-| 方法上（无重载） | `com.demo.testsen.config.ElasticSearchConfig#methodName` |
-| 方法上（有重载） | `com.demo.testsen.config.ElasticSearchConfig#methodName(java.lang.String, int)` |
-| 字段上 | `com.demo.testsen.config.ElasticSearchConfig#fieldName` |
-| 空行/注释/import等 | `com/demo/testsen/config/ElasticSearchConfig.java:142` |
+文件路径: src/main/java/packageName/LinkConvertController.java
+复制结果: packageName.LinkConvertController
 ```
