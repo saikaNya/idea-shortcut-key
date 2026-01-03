@@ -14,34 +14,44 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "IDEA Shortcut Key",
+      "properties": {
+        "idea-shortcut-key.enableDebugInfo": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logging in the output channel"
+        }
+      }
+    },
     "commands": [
       {
-        "command": "idea-shortcut-key.fqn",
-        "title": "get FQN"
+        "command": "idea-shortcut-key.copyReference",
+        "title": "copy Reference"
       },
       {
-        "command": "idea-shortcut-key.copyFileFQN",
-        "title": "Copy File FQN"
+        "command": "idea-shortcut-key.copyFileReference",
+        "title": "copy File Reference"
       }
     ],
     "keybindings": [
       {
-        "command": "idea-shortcut-key.fqn",
+        "command": "idea-shortcut-key.copyReference",
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "editorTextFocus"
       },
       {
-        "command": "idea-shortcut-key.copyFileFQN",
+        "command": "idea-shortcut-key.copyFileReference",
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "explorerViewletVisible && filesExplorerFocus"
       },
       {
-        "command": "idea-shortcut-key.copyFileFQN",
+        "command": "idea-shortcut-key.copyFileReference",
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "listFocus && explorerViewletVisible"
@@ -50,7 +60,7 @@
     "menus": {
       "explorer/context": [
         {
-          "command": "idea-shortcut-key.copyFileFQN",
+          "command": "idea-shortcut-key.copyFileReference",
           "when": "resourceExtname == .java",
           "group": "5_cutcopypaste"
         }
@@ -73,6 +83,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "1.95.0",
@@ -85,5 +96,8 @@
     "eslint": "^9.25.1",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

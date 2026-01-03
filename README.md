@@ -69,3 +69,33 @@ public class LinkConvertController {
 - 支持复杂的包名结构
 - 优雅的错误处理和用户反馈
 - 支持Windows和Unix路径分隔符
+
+
+
+```
+我来修改 `copyFQN` 函数，将相对路径:行号作为默认逻辑，只有 `.java` 和 `.class` 文件才使用符号解析逻辑：
+
+[4 tools called]
+
+编译成功！修改完成。
+
+## 修改后的逻辑
+
+### 默认行为（非 Java/Class 文件）
+直接返回 **相对路径:行号** 格式：
+```
+com/demo/testsen/config/ElasticSearchConfig.java:142
+src/components/Button.tsx:25
+```
+
+### Java/Class 文件特殊处理
+只有 `.java` 和 `.class` 文件解析：
+
+| 光标位置 | 输出 |
+|---------|------|
+| 类名上 | `com.demo.testsen.config.ElasticSearchConfig` |
+| 方法上（无重载） | `com.demo.testsen.config.ElasticSearchConfig#methodName` |
+| 方法上（有重载） | `com.demo.testsen.config.ElasticSearchConfig#methodName(java.lang.String, int)` |
+| 字段上 | `com.demo.testsen.config.ElasticSearchConfig#fieldName` |
+| 空行/注释/import等 | `com/demo/testsen/config/ElasticSearchConfig.java:142` |
+```
