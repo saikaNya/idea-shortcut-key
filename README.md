@@ -11,7 +11,7 @@
 ### 1. 复制代码符号的全限定名
 - 在Java代码中的类名、方法名或字段上使用快捷键
 - 自动提取并复制完全限定名到剪贴板
-- 支持方法签名冲重载
+- 支持方法签名重载
 
 ### 2. 复制文件的全限定名
 - 在文件资源管理器中选中Java文件时使用快捷键
@@ -19,6 +19,12 @@
 - 支持从文件路径推断包名（当无法读取文件内容时）
 
 ## 使用方法
+
+### 命令
+| 命令 | 描述 |
+|------|------|
+| `idea-shortcut-key.copyReference` | 复制代码符号的全限定名（在编辑器中使用） |
+| `idea-shortcut-key.copyFileReference` | 复制文件的全限定类名（在文件资源管理器中使用） |
 
 ### 快捷键
 - **Windows/Linux**: `Ctrl+Alt+Shift+C`
@@ -69,6 +75,12 @@ A VS Code extension that provides IntelliJ IDEA-like shortcut key functionality.
 - Supports inferring package name from file path (when file content cannot be read)
 
 ## Usage
+
+### Commands
+| Command | Description |
+|---------|-------------|
+| `idea-shortcut-key.copyReference` | Copy fully qualified name of code symbol (use in editor) |
+| `idea-shortcut-key.copyFileReference` | Copy fully qualified class name of file (use in file explorer) |
 
 ### Keyboard Shortcuts
 - **Windows/Linux**: `Ctrl+Alt+Shift+C`

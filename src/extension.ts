@@ -69,12 +69,11 @@ async function getReference(vscodeUriPath: string, line: number, character: numb
         return { reference: pathWithLine, type: 'path' };
     };
 
-    // 检查文件扩展名，非 Java/Class 文件直接返回路径
-    const fileExtension = document.uri.path.split('.').pop()?.toLowerCase();
-    const isJavaFile = fileExtension === 'java' || fileExtension === 'class';
-    debug(`File extension: ${fileExtension}, isJavaFile=${isJavaFile}`);
+    // 检查是否为 Java 文件
+    const javaFile = isJavaFile(document.uri);
+    debug(`isJavaFile: ${javaFile}`);
 
-    if (isJavaFile) {
+    if (javaFile) {
         // Java/Class 文件，优先使用 Go to Definition 获取定义位置
         debug(`Executing definition provider...`);
         const definitions = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -188,27 +187,28 @@ function getSourceRelativePathWithLine(uri: vscode.Uri, position: vscode.Positio
  * 返回格式: com/demo/testsen/config/ElasticSearchConfig.java
  */
 function getSourceRelativePath(uri: vscode.Uri): string {
-    // 获取文件的完整路径
-    const fullPath = uri.fsPath.replace(/\\/g, '/');
-    debug(`getSourceRelativePath fullPath: ${fullPath}`);
+    if (isJavaFile(uri)) {
+        // 获取文件的完整路径
+        const fullPath = uri.fsPath.replace(/\\/g, '/');
+        debug(`getSourceRelativePath fullPath: ${fullPath}`);
 
-    // 尝试匹配常见的 Java 源码目录模式
-    const sourcePatterns = [
-        /.*\/src\/main\/java\/(.+)$/,
-        /.*\/src\/test\/java\/(.+)$/,
-        /.*\/src\/main\/kotlin\/(.+)$/,
-        /.*\/src\/test\/kotlin\/(.+)$/,
-        /.*\/src\/(.+)$/,
-        /.*\/java\/(.+)$/,
-    ];
+        // 尝试匹配常见的 Java 源码目录模式
+        const sourcePatterns = [
+            /.*\/src\/main\/java\/(.+)$/,
+            /.*\/src\/test\/java\/(.+)$/,
+            /.*\/src\/main\/kotlin\/(.+)$/,
+            /.*\/src\/test\/kotlin\/(.+)$/,
+            /.*\/src\/(.+)$/,
+            /.*\/java\/(.+)$/,
+        ];
 
-    for (const pattern of sourcePatterns) {
-        const match = pattern.exec(fullPath);
-        if (match && match[1]) {
-            return match[1];
+        for (const pattern of sourcePatterns) {
+            const match = pattern.exec(fullPath);
+            if (match && match[1]) {
+                return match[1];
+            }
         }
     }
-
     // 如果没有匹配到，尝试从工作区相对路径获取
     const workspaceRelativePath = vscode.workspace.asRelativePath(uri, false);
     return workspaceRelativePath.replace(/\\/g, '/');
@@ -865,6 +865,22 @@ function checkMethodOverload(classSymbol: vscode.DocumentSymbol, methodName: str
 }
 
 /**
+ * 判断 URI 是否为 Java 文件
+ * - .java 结尾的文件
+ * - .class 结尾且 scheme 为 jdt 的文件（反编译的 class 文件）
+ */
+function isJavaFile(uri: vscode.Uri): boolean {
+    const path = uri.path.toLowerCase();
+    if (path.endsWith('.java')) {
+        return true;
+    }
+    if (path.endsWith('.class') && uri.scheme === 'jdt') {
+        return true;
+    }
+    return false;
+}
+
+/**
  * 判断符号是否为类型符号（类、接口、枚举）
  */
 function isTypeSymbol(kind: vscode.SymbolKind): boolean {
@@ -885,6 +901,31 @@ function isMemberSymbol(kind: vscode.SymbolKind): boolean {
         kind === vscode.SymbolKind.EnumMember;
 }
 
+// 从资源管理器获取当前选中的资源
+async function getSelectedExplorerResource(): Promise<vscode.Uri | undefined> {
+    try {
+        // 保存当前剪贴板内容
+        const originalClipboard = await vscode.env.clipboard.readText();
+        
+        // 执行复制文件路径命令
+        await vscode.commands.executeCommand('copyFilePath');
+        
+        // 读取复制的路径
+        const copiedPath = await vscode.env.clipboard.readText();
+        
+        // 恢复原始剪贴板内容
+        await vscode.env.clipboard.writeText(originalClipboard);
+        
+        if (copiedPath && copiedPath !== originalClipboard) {
+            debug(`Got path from clipboard: ${copiedPath}`);
+            return vscode.Uri.file(copiedPath);
+        }
+    } catch (err) {
+        debug(`Failed to get selected explorer resource: ${err}`);
+    }
+    return undefined;
+}
+
 // 复制文件的全限定名
 async function copyFileReference(uri?: vscode.Uri) {
     debug('copyFileReference command triggered');
@@ -898,8 +939,15 @@ async function copyFileReference(uri?: vscode.Uri) {
             targetUri = args[0];
             debug('Got URI from command arguments');
         }
+        // 尝试从资源管理器选中项获取（通过复制路径命令）
+        if (!targetUri) {
+            targetUri = await getSelectedExplorerResource();
+            if (targetUri) {
+                debug('Got URI from explorer selection');
+            }
+        }
         // 如果还是没有，尝试从当前活动编辑器获取
-        else if (vscode.window.activeTextEditor) {
+        if (!targetUri && vscode.window.activeTextEditor) {
             targetUri = vscode.window.activeTextEditor.document.uri;
             debug('Got URI from active editor');
         }
@@ -914,6 +962,21 @@ async function copyFileReference(uri?: vscode.Uri) {
     }
 
     debug(`Target URI: ${targetUri.toString()}`);
+
+    // 检查是否为文件夹
+    try {
+        const stat = await vscode.workspace.fs.stat(targetUri);
+        if (stat.type === vscode.FileType.Directory) {
+            const relativePath = vscode.workspace.asRelativePath(targetUri, false).replace(/\\/g, '/');
+            debug(`Directory selected, returning relative path: ${relativePath}`);
+            info(`Copied directory path: ${relativePath}`);
+            await vscode.env.clipboard.writeText(relativePath);
+            return;
+        }
+    } catch (err) {
+        debug(`Failed to stat URI: ${err}`);
+    }
+
     const fqn = await getFileReference(targetUri);
     if (fqn) {
         info(`Copied file reference: ${fqn}`);
