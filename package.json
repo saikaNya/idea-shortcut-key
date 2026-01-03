@@ -2,7 +2,7 @@
   "name": "idea-shortcut-key",
   "displayName": "idea-shortcut-key",
   "description": "idea shortcut key",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "saika",
   "repository": {
     "type": "git",
@@ -14,34 +14,46 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "IDEA Shortcut Key",
+      "properties": {
+        "idea-shortcut-key.enableDebugInfo": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logging in the output channel"
+        }
+      }
+    },
     "commands": [
       {
-        "command": "idea-shortcut-key.fqn",
-        "title": "get FQN"
+        "command": "idea-shortcut-key.copyReference",
+        "title": "copy Reference"
       },
       {
-        "command": "idea-shortcut-key.copyFileFQN",
-        "title": "Copy File FQN"
+        "command": "idea-shortcut-key.copyFileReference",
+        "title": "copy File Reference"
       }
     ],
     "keybindings": [
       {
-        "command": "idea-shortcut-key.fqn",
+        "command": "idea-shortcut-key.copyReference",
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "editorTextFocus"
       },
       {
-        "command": "idea-shortcut-key.copyFileFQN",
+        "command": "idea-shortcut-key.copyFileReference",
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "explorerViewletVisible && filesExplorerFocus"
       },
       {
-        "command": "idea-shortcut-key.copyFileFQN",
+        "command": "idea-shortcut-key.copyFileReference",
         "key": "ctrl+alt+shift+c",
         "mac": "cmd+alt+shift+c",
         "when": "listFocus && explorerViewletVisible"
@@ -50,7 +62,7 @@
     "menus": {
       "explorer/context": [
         {
-          "command": "idea-shortcut-key.copyFileFQN",
+          "command": "idea-shortcut-key.copyFileReference",
           "when": "resourceExtname == .java",
           "group": "5_cutcopypaste"
         }
@@ -81,6 +93,7 @@
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.4.2",
+    "cross-env": "^10.1.0",
     "esbuild": "^0.25.3",
     "eslint": "^9.25.1",
     "npm-run-all": "^4.1.5",

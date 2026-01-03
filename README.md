@@ -1,13 +1,17 @@
-# IDEA Shortcut Key Extension
+<div align="center">
+    <a href="#zh-readme">中文</a> | <a href="#en-readme">English</a>
+</div>
 
-这是一个VS Code扩展，提供类似IntelliJ IDEA的快捷键功能，用于复制Java代码的全限定名(FQN)。
+<h1 id="zh-readme">IDEA Shortcut Key Extension</h1>
+
+这是一个VS Code扩展，提供类似IntelliJ IDEA的快捷键功能，有些idea中的快捷键在vscode中没有实现，目前暂时只实现Copy Reference功能。
 
 ## 功能特性
 
 ### 1. 复制代码符号的全限定名
 - 在Java代码中的类名、方法名或字段上使用快捷键
 - 自动提取并复制完全限定名到剪贴板
-- 支持方法签名（自动移除返回类型和throws子句）
+- 支持方法签名冲重载
 
 ### 2. 复制文件的全限定名
 - 在文件资源管理器中选中Java文件时使用快捷键
@@ -24,13 +28,14 @@
 
 #### 1. 在代码编辑器中
 将光标放在Java类名、方法名或字段上，按下快捷键即可复制其全限定名。
+将光标不在任何符号上时，按下快捷键可复制文件相对路径:行号
 
 **示例**:
 ```java
 public class LinkConvertController {
     public Object search() throws IOException {
         // 光标在 search 方法名上按快捷键
-        // 复制结果: com.hy.linkConvert.api.LinkConvertController.search()
+        // 复制结果: packageName.LinkConvertController.search
     }
 }
 ```
@@ -38,34 +43,59 @@ public class LinkConvertController {
 #### 2. 在文件资源管理器中
 - 在文件资源管理器中选中Java文件
 - 按下快捷键复制文件的全限定类名
-- 或者右键点击Java文件，选择"Copy File FQN"
 
 **示例**:
 ```
-文件路径: src/main/java/com/hy/linkConvert/api/LinkConvertController.java
-复制结果: com.hy.linkConvert.api.LinkConvertController
+文件路径: src/main/java/packageName/LinkConvertController.java
+复制结果: packageName.LinkConvertController
 ```
 
-## 支持的文件结构
+---
 
-扩展能够正确处理以下项目结构：
+<h1 id="en-readme">IDEA Shortcut Key Extension</h1>
 
-- 标准Maven项目: `src/main/java/com/example/MyClass.java`
-- 标准Gradle项目: `src/main/java/com/example/MyClass.java`
-- 简单src结构: `src/com/example/MyClass.java`
-- 自定义结构: 通过读取package声明自动识别
+A VS Code extension that provides IntelliJ IDEA-like shortcut key functionality. Some shortcuts available in IDEA are not implemented in VS Code. Currently, only the Copy Reference feature is implemented.
 
-## 安装和开发
+## Features
 
-1. 克隆项目
-2. 运行 `pnpm install` 安装依赖
-3. 运行 `pnpm run compile` 编译项目
-4. 按 F5 在新的VS Code窗口中测试扩展
+### 1. Copy Fully Qualified Name of Code Symbols
+- Use the shortcut on class names, method names, or fields in Java code
+- Automatically extracts and copies the fully qualified name to clipboard
+- Supports method signature overloading
 
-## 技术特性
+### 2. Copy Fully Qualified Name of Files
+- Use the shortcut when a Java file is selected in the file explorer
+- Automatically reads the package declaration and generates the fully qualified class name
+- Supports inferring package name from file path (when file content cannot be read)
 
-- 智能解析Java方法签名
-- 自动移除返回类型和throws子句
-- 支持复杂的包名结构
-- 优雅的错误处理和用户反馈
-- 支持Windows和Unix路径分隔符
+## Usage
+
+### Keyboard Shortcuts
+- **Windows/Linux**: `Ctrl+Alt+Shift+C`
+- **Mac**: `Cmd+Alt+Shift+C`
+
+### Use Cases
+
+#### 1. In the Code Editor
+Place the cursor on a Java class name, method name, or field, then press the shortcut to copy its fully qualified name.
+When the cursor is not on any symbol, pressing the shortcut will copy the relative file path with line number.
+
+**Example**:
+```java
+public class LinkConvertController {
+    public Object search() throws IOException {
+        // Place cursor on the search method name and press shortcut
+        // Copied result: packageName.LinkConvertController.search
+    }
+}
+```
+
+#### 2. In the File Explorer
+- Select a Java file in the file explorer
+- Press the shortcut to copy the file's fully qualified class name
+
+**Example**:
+```
+File path: src/main/java/packageName/LinkConvertController.java
+Copied result: packageName.LinkConvertController
+```
